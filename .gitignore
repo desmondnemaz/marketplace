@@ -1,0 +1,28 @@
+# OS & IDEs
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+
+# Environment variables
+.env
+.env*.local
+
+# Next.js (next-frontend)
+node_modules/
+.next/
+out/
+
+# Java / Spring Boot (java-backend)
+target/
+build/
+!.mvn/wrapper/maven-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Flutter (flutter-frontend)
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+**/build/
