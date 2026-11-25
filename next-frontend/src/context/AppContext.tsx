@@ -1,26 +1,39 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { Product } from "@/types/product";
 
-type Currency = "USD" | "ZiG";
+export type Currency = "USD" | "ZiG";
 
-export interface CartItem extends Product {
-    cartQuantity: number;
+export interface CartItem {
+    product: Product;
+    quantity: number;
+}
+
+export interface AuthUser {
+    token: string;
+    email: string;
+    fullName: string;
+    role: "BUYER" | "SELLER" | "ADMIN";
 }
 
 interface AppContextType {
     products: Product[];
     loading: boolean;
     refreshProducts: () => Promise<void>;
-    cart: CartItem[];
-    addToCart: (product: Product) => void;
-    removeFromCart: (productId: number) => void;
     currency: Currency;
     setCurrency: (currency: Currency) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    cart: CartItem[];
+    addToCart: (product: Product) => void;
+    removeFromCart: (productId: number) => void;
+    clearCart: () => void;
+    user: AuthUser | null;
+    isSellerOrAdmin: boolean;
+    loginUser: (authData: AuthUser) => void;
+    logoutUser: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -28,47 +41,71 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [cart, setCart] = useState<CartItem[]>([]);
     const [currency, setCurrency] = useState<Currency>("USD");
     const [searchQuery, setSearchQuery] = useState<string>("");
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [user, setUser] = useState<AuthUser | null>(null);
 
-    const refreshProducts = useCallback(async () => {
+    const refreshProducts = async () => {
         try {
             setLoading(true);
             const response = await api.get<Product[]>("/products");
             setProducts(response.data);
         } catch (error) {
-            console.warn("Could not load products from backend:", error);
+            console.error("Failed to fetch products:", error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    };
 
     useEffect(() => {
-        const loadInitialProducts = async () => {
-            await refreshProducts();
-        };
-        loadInitialProducts();
-    }, [refreshProducts]);
+        refreshProducts();
+
+        const savedToken = localStorage.getItem("token");
+        const savedUser = localStorage.getItem("user");
+        if (savedToken && savedUser) {
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+            }
+        }
+    }, []);
+
+    const loginUser = (authData: AuthUser) => {
+        localStorage.setItem("token", authData.token);
+        localStorage.setItem("user", JSON.stringify(authData));
+        setUser(authData);
+    };
+
+    const logoutUser = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+    };
+
+    const isSellerOrAdmin = user?.role === "SELLER" || user?.role === "ADMIN";
 
     const addToCart = (product: Product) => {
-        if (product.id === undefined) return;
         setCart((prev) => {
-            const existing = prev.find((item) => item.id === product.id);
+            const existing = prev.find((item) => item.product.id === product.id);
             if (existing) {
                 return prev.map((item) =>
-                    item.id === product.id
-                        ? { ...item, cartQuantity: item.cartQuantity + 1 }
+                    item.product.id === product.id
+                        ? { ...item, quantity: item.quantity + 1 }
                         : item
                 );
             }
-            return [...prev, { ...product, cartQuantity: 1 }];
+            return [...prev, { product, quantity: 1 }];
         });
     };
 
     const removeFromCart = (productId: number) => {
-        setCart((prev) => prev.filter((item) => item.id !== productId));
+        setCart((prev) => prev.filter((item) => item.product.id !== productId));
     };
+
+    const clearCart = () => setCart([]);
 
     return (
         <AppContext.Provider
@@ -76,13 +113,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 products,
                 loading,
                 refreshProducts,
-                cart,
-                addToCart,
-                removeFromCart,
                 currency,
                 setCurrency,
                 searchQuery,
                 setSearchQuery,
+                cart,
+                addToCart,
+                removeFromCart,
+                clearCart,
+                user,
+                isSellerOrAdmin,
+                loginUser,
+                logoutUser,
             }}
         >
             {children}

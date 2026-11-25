@@ -18,12 +18,11 @@ export default function HomePage() {
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
         selectedCategory === "All" || product.category === selectedCategory;
-    const query = searchQuery.toLowerCase();
+    const query = (searchQuery ?? "").toLowerCase();
     const matchesSearch =
-        product.name.toLowerCase().includes(query) ||
-        product.brand.toLowerCase().includes(query) ||
-        product.supplier.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query);
+        (product.name ?? "").toLowerCase().includes(query) ||
+        (product.brand ?? "").toLowerCase().includes(query) ||
+        (product.category ?? "").toLowerCase().includes(query);
 
     return matchesCategory && matchesSearch;
   });
